@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ROI Kalkulators — Optimistic</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root{
+  --green:#1a6b4a;--green-light:#e8f5ee;--green-mid:#2d9b6b;
+  --navy:#0d1f35;--navy-light:#1a3350;
+  --gold:#c8973a;--gold-light:#fdf3e0;
+  --gray-50:#f8f9fa;--gray-100:#f0f2f4;--gray-200:#e2e6ea;--gray-400:#9aa3ae;--gray-600:#5a6472;--gray-800:#1f2937;
+  --red:#c0392b;--red-light:#fdf0ee;
+  --amber:#b7690a;--amber-light:#fef9ee;
+  --radius:10px;--radius-lg:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'DM Sans',sans-serif;background:#f0f2f5;color:var(--gray-800);line-height:1.5}
+
+/* NAV */
+.topbar{background:var(--navy);padding:0 2rem;display:flex;align-items:center;justify-content:space-between;height:60px;position:sticky;top:0;z-index:100}
+.topbar-logo{font-family:'DM Serif Display',serif;font-size:18px;color:#fff;letter-spacing:.02em}
+.topbar-logo span{color:var(--gold)}
+.lang-switcher{display:flex;gap:4px}
+.lang-btn{padding:4px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.2);background:transparent;color:rgba(255,255,255,.6);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500;transition:all .15s}
+.lang-btn.active{background:var(--gold);border-color:var(--gold);color:#fff}
+
+/* HERO */
+.hero{background:var(--navy);padding:2.5rem 2rem 3rem;text-align:center;position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:40px;background:#f0f2f5;clip-path:ellipse(55% 100% at 50% 100%)}
+.hero-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(200,151,58,.15);border:1px solid rgba(200,151,58,.3);border-radius:20px;padding:4px 14px;font-size:11px;font-weight:600;color:var(--gold);letter-spacing:.06em;margin-bottom:1rem}
+.hero h1{font-family:'DM Serif Display',serif;font-size:36px;color:#fff;margin-bottom:.5rem;letter-spacing:-.01em}
+.hero p{font-size:15px;color:rgba(255,255,255,.55);max-width:480px;margin:0 auto}
+
+/* LAYOUT */
+.page{max-width:920px;margin:0 auto;padding:2rem 1rem 4rem}
+
+/* CARDS */
+.card{background:#fff;border:1px solid var(--gray-200);border-radius:var(--radius-lg);padding:1.75rem;margin-bottom:1.25rem}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;padding-bottom:1rem;border-bottom:1px solid var(--gray-100)}
+.card-title{font-size:12px;font-weight:600;color:var(--gray-400);letter-spacing:.08em;text-transform:uppercase;display:flex;align-items:center;gap:8px}
+.card-title-icon{width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px}
+.icon-green{background:var(--green-light)}
+.icon-blue{background:#e8f0fb}
+.icon-amber{background:var(--amber-light)}
+
+/* BLOCK BADGES */
+.block-a-header{background:linear-gradient(135deg,var(--green),#2db87a);border-radius:var(--radius);padding:1.1rem 1.4rem;margin-bottom:1.25rem;display:flex;align-items:center;justify-content:space-between}
+.block-b-header{background:linear-gradient(135deg,var(--navy),var(--navy-light));border-radius:var(--radius);padding:1.1rem 1.4rem;margin-bottom:1.25rem;display:flex;align-items:center;justify-content:space-between}
+.block-header-left h3{font-size:15px;font-weight:600;color:#fff;margin-bottom:2px}
+.block-header-left p{font-size:12px;color:rgba(255,255,255,.6)}
+.block-tag{font-size:10px;font-weight:700;letter-spacing:.08em;padding:4px 12px;border-radius:20px}
+.tag-green{background:rgba(255,255,255,.2);color:#fff}
+.tag-blue{background:rgba(255,255,255,.15);color:rgba(255,255,255,.9)}
+
+/* SLIDERS */
+.srow{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.slabel-wrap{flex:0 0 230px;display:flex;align-items:center;gap:6px}
+.slabel{font-size:13px;color:var(--gray-600)}
+input[type=range]{flex:1;-webkit-appearance:none;height:4px;background:var(--gray-200);border-radius:2px;outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--green);cursor:pointer;border:3px solid #fff;box-shadow:0 0 0 2px var(--green)}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--green);cursor:pointer;border:3px solid #fff}
+.sval{font-size:13px;font-weight:600;color:var(--gray-800);min-width:80px;text-align:right}
+@media(max-width:640px){.srow{flex-wrap:wrap}.slabel-wrap{flex:0 0 100%}.sval{min-width:auto}}
+
+/* TIP */
+.tip-btn{width:17px;height:17px;border-radius:50%;background:var(--gray-100);border:1px solid var(--gray-200);font-size:10px;color:var(--gray-400);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-family:inherit;flex-shrink:0;font-weight:600;transition:all .15s}
+.tip-btn:hover{background:var(--green-light);border-color:var(--green);color:var(--green)}
+.tipbox{display:none;background:var(--gray-50);border:1px solid var(--gray-200);border-radius:var(--radius);padding:10px 13px;font-size:12px;color:var(--gray-600);line-height:1.65;margin:4px 0 12px}
+.tipbox.open{display:block}
+
+/* TARIFF */
+.tariff-card{border:2px solid var(--gray-200);border-radius:var(--radius-lg);padding:1.1rem 1.25rem;cursor:pointer;transition:all .2s;position:relative;background:#fff}
+.tariff-card:hover{border-color:var(--green-mid);box-shadow:0 2px 12px rgba(26,107,74,.08)}
+.tariff-card.active{border-color:var(--green);background:var(--green-light);box-shadow:0 2px 16px rgba(26,107,74,.12)}
+.tariff-card.active .tc-name{color:var(--green)}
+.tariff-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px}
+.tariff-grid2{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+@media(max-width:680px){.tariff-grid,.tariff-grid2{grid-template-columns:1fr 1fr}}
+.tc-name{font-size:11px;font-weight:700;color:var(--gray-400);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px}
+.tc-setup{font-size:18px;font-weight:600;color:var(--gray-800);margin-bottom:2px}
+.tc-monthly{font-size:13px;color:var(--gray-600)}
+.tc-range{font-size:11px;color:var(--gray-400);margin-top:4px}
+.tariff-active-badge{position:absolute;top:10px;right:10px;background:var(--green);color:#fff;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;letter-spacing:.05em;display:none}
+.tariff-card.active .tariff-active-badge{display:block}
+.manual-fields{background:var(--gray-50);border:1px solid var(--gray-200);border-radius:var(--radius);padding:1.1rem;margin-top:10px;display:none}
+
+/* METRICS */
+.g4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+@media(max-width:640px){.g4{grid-template-columns:1fr 1fr}.g3{grid-template-columns:1fr 1fr}}
+.mc{background:var(--gray-50);border:1px solid var(--gray-100);border-radius:var(--radius);padding:14px 16px}
+.mc-label{font-size:11px;color:var(--gray-400);font-weight:500;margin-bottom:4px}
+.mc-val{font-size:20px;font-weight:600;color:var(--gray-800)}
+.mc-sub{font-size:11px;color:var(--gray-400);margin-top:3px}
+.mc.green{background:var(--green-light);border-color:#b8e0cc}.mc.green .mc-val{color:var(--green)}
+.mc.amber{background:var(--amber-light);border-color:#f0d499}.mc.amber .mc-val{color:var(--amber)}
+.mc.red{background:var(--red-light);border-color:#f0c4be}.mc.red .mc-val{color:var(--red)}
+.mc.navy{background:#eef2f8;border-color:#c5d0e0}.mc.navy .mc-val{color:var(--navy)}
+
+/* SUMMARY HERO */
+.summary-hero{background:var(--navy);border-radius:var(--radius-lg);padding:2rem;margin-bottom:1.5rem;display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:1rem}
+@media(max-width:640px){.summary-hero{grid-template-columns:1fr 1fr}}
+.sh-item{}
+.sh-label{font-size:11px;color:rgba(255,255,255,.5);font-weight:500;margin-bottom:5px;letter-spacing:.04em}
+.sh-val{font-size:24px;font-weight:600;color:#fff}
+.sh-sub{font-size:11px;color:rgba(255,255,255,.4);margin-top:3px}
+.sh-val.gold{color:var(--gold)}
+.sh-val.green{color:#5de8a0}
+
+/* PUNCH */
+.punch{border-left:4px solid var(--green);background:var(--green-light);border-radius:0 var(--radius) var(--radius) 0;padding:1.1rem 1.4rem;margin-top:1.25rem}
+.punch p{font-size:14px;color:#1a4a30;line-height:1.75}
+.punch strong{font-weight:600}
+
+/* TABLE */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;color:var(--gray-400);font-weight:500;padding:8px 10px;border-bottom:2px solid var(--gray-100);font-size:12px;letter-spacing:.03em}
+td{padding:8px 10px;color:var(--gray-800);border-bottom:1px solid var(--gray-100)}
+tr.total td{font-weight:600;background:var(--navy);color:#fff;border-bottom:none}
+tr.total td.plus,tr.total td.minus{color:#fff}
+.plus{color:var(--green)}.minus{color:var(--red)}
+
+/* CHART */
+.chart-wrap{position:relative;width:100%;height:230px;margin-top:1rem}
+.legend{display:flex;gap:16px;font-size:12px;color:var(--gray-400);margin-bottom:.5rem;flex-wrap:wrap}
+.legend span{display:flex;align-items:center;gap:5px}
+.ld{width:10px;height:10px;border-radius:2px;display:inline-block}
+
+/* CTA MODAL */
+.cta-bar{background:var(--gold-light);border:1px solid #e8d499;border-radius:var(--radius-lg);padding:1.4rem 1.75rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1.25rem;flex-wrap:wrap}
+.cta-bar-text h3{font-size:15px;font-weight:600;color:var(--gray-800);margin-bottom:3px}
+.cta-bar-text p{font-size:13px;color:var(--gray-600)}
+.cta-btn{background:var(--green);color:#fff;border:none;padding:10px 22px;border-radius:var(--radius);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;transition:background .15s}
+.cta-btn:hover{background:var(--green-mid)}
+.cta-btn-outline{background:transparent;color:var(--green);border:2px solid var(--green);padding:9px 20px;border-radius:var(--radius);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .15s}
+.cta-btn-outline:hover{background:var(--green-light)}
+
+/* OVERLAY */
+.overlay{display:none;position:fixed;inset:0;background:rgba(13,31,53,.6);z-index:200;align-items:center;justify-content:center;padding:1rem}
+.overlay.open{display:flex}
+.modal{background:#fff;border-radius:var(--radius-lg);padding:2rem;width:100%;max-width:480px;position:relative}
+.modal-close{position:absolute;top:16px;right:16px;background:var(--gray-100);border:none;width:30px;height:30px;border-radius:50%;font-size:16px;cursor:pointer;color:var(--gray-600);display:flex;align-items:center;justify-content:center}
+.modal h2{font-family:'DM Serif Display',serif;font-size:22px;color:var(--navy);margin-bottom:.4rem}
+.modal p.sub{font-size:13px;color:var(--gray-400);margin-bottom:1.5rem}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:12px;font-weight:600;color:var(--gray-600);margin-bottom:5px;letter-spacing:.03em}
+.form-group input{width:100%;padding:10px 13px;border:1.5px solid var(--gray-200);border-radius:var(--radius);font-size:14px;font-family:inherit;color:var(--gray-800);outline:none;transition:border .15s}
+.form-group input:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(26,107,74,.08)}
+.modal-footer{display:flex;gap:10px;margin-top:1.25rem}
+.modal-summary{background:var(--gray-50);border-radius:var(--radius);padding:10px 13px;margin-bottom:1rem;font-size:12px;color:var(--gray-600);line-height:1.7}
+.modal-summary strong{color:var(--gray-800);font-weight:600}
+.success-msg{display:none;text-align:center;padding:1.5rem 0}
+.success-icon{width:56px;height:56px;background:var(--green-light);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;font-size:24px}
+.success-msg h3{font-size:18px;font-weight:600;color:var(--green);margin-bottom:.5rem}
+.success-msg p{font-size:14px;color:var(--gray-600)}
+
+/* PRINT */
+.print-btn{background:var(--gray-100);color:var(--gray-600);border:1px solid var(--gray-200);padding:9px 18px;border-radius:var(--radius);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;transition:all .15s}
+.print-btn:hover{background:var(--gray-200)}
+.section-actions{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:1.5rem;justify-content:flex-end}
+
+/* FOOTER */
+.footer{text-align:center;font-size:11px;color:var(--gray-400);margin-top:2rem;padding-top:1.5rem;border-top:1px solid var(--gray-200);line-height:1.8}
+.disclaimer{margin-top:.5rem;font-size:10px;color:var(--gray-400)}
+
+/* PRINT STYLES */
+@media print{
+  .topbar,.lang-switcher,.cta-bar,.section-actions,.overlay,.print-btn{display:none!important}
+  body{background:#fff;font-size:12px}
+  .hero{background:var(--navy)!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;padding:1.5rem}
+  .hero h1{font-size:24px}.hero p{font-size:12px}
+  .page{padding:.5rem 0}
+  .card{break-inside:avoid;margin-bottom:.75rem;border:1px solid #ddd;box-shadow:none;padding:1rem}
+  .summary-hero{background:var(--navy)!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;padding:1rem}
+  .print-header{display:flex!important}
+}
+.print-header{display:none;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:2px solid var(--navy);margin-bottom:1rem}
+.print-logo img{height:40px}
+.print-info{text-align:right;font-size:10px;color:var(--gray-600);line-height:1.6}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-logo">Optimistic<span>.</span></div>
+  <div class="lang-switcher">
+    <button class="lang-btn active" onclick="setLang('lv')">LV</button>
+    <button class="lang-btn" onclick="setLang('ru')">RU</button>
+    <button class="lang-btn" onclick="setLang('en')">EN</button>
+  </div>
+</div>
+
+<div class="hero">
+  <div class="hero-badge" data-lv="LOĢISTIKAS OPTIMIZĀCIJA" data-ru="ОПТИМИЗАЦИЯ ЛОГИСТИКИ" data-en="LOGISTICS OPTIMIZATION">LOĢISTIKAS OPTIMIZĀCIJA</div>
+  <h1 data-lv="ROI Kalkulators" data-ru="ROI Калькулятор" data-en="ROI Calculator">ROI Kalkulators</h1>
+  <p data-lv="Pilns ekonomiskais pamatojums jūsu autoparka optimizācijai" data-ru="Полное экономическое обоснование оптимизации вашего автопарка" data-en="Full economic justification for your fleet optimisation">Pilns ekonomiskais pamatojums jūsu autoparka optimizācijai</p>
+</div>
+
+<!-- Print header (only visible when printing) -->
+<div class="print-header">
+  <div class="print-logo"><img src="data:image/png;base64,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" alt="Futech"></div>
+  <div class="print-info">
+    SIA Futech · Dzelzavas iela 117, Rīga, LV-1021<br>
+    Phone: +371 22845568 · info@futech.lv · www.futech.lv<br>
+    Company code: 40103853766 · VAT: LV40103853766
+  </div>
+</div>
+
+<div class="page">
+
+  <!-- CTA BAR -->
+  <div class="cta-bar">
+    <div class="cta-bar-text">
+      <h3 data-lv="Gatavs uzzināt precīzu ietaupījumu?" data-ru="Готовы узнать точную экономию?" data-en="Ready to see your exact savings?">Gatavs uzzināt precīzu ietaupījumu?</h3>
+      <p data-lv="Aizpildi formu — mēs sagatavosim individuālu aprēķinu 24h laikā" data-ru="Заполни форму — мы подготовим индивидуальный расчёт за 24ч" data-en="Fill the form — we'll prepare a personalised calculation within 24h">Aizpildi formu — mēs sagatavosim individuālu aprēķinu 24h laikā</p>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="cta-btn" onclick="document.getElementById('overlay').classList.add('open')" data-lv="Pieteikties konsultācijai" data-ru="Записаться на консультацию" data-en="Book a consultation">Pieteikties konsultācijai</button>
+      <button class="cta-btn-outline print-btn" onclick="window.print()">&#x1F5A8; <span data-lv="Drukāt / PDF" data-ru="Печать / PDF" data-en="Print / PDF">Drukāt / PDF</span></button>
+    </div>
+  </div>
+
+  <!-- PARAMS -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><span class="card-title-icon icon-green">&#x1F697;</span> <span data-lv="AUTOPARKA PARAMETRI" data-ru="ПАРАМЕТРЫ АВТОПАРКА" data-en="FLEET PARAMETERS">AUTOPARKA PARAMETRI</span></div>
+    </div>
+
+    <div class="srow">
+      <span class="slabel-wrap"><span class="slabel" data-lv="Automašīnu skaits" data-ru="Количество машин" data-en="Number of vehicles">Automašīnu skaits</span><button class="tip-btn" onclick="tog('t1')">i</button></span>
+      <input type="range" min="10" max="100" value="20" step="1" id="cars">
+      <span class="sval" id="cars-out">20</span>
+    </div>
+    <div class="tipbox" id="t1" data-lv="Minimālais efektīvais apjoms ir 10 auto. Jo lielāks parks, jo lielāks mēroga efekts. Optimistic klienti: Food Union, Tamro, Cēsu Alus — visi 20+ auto. Virs 50 auto tiek aktivizēts flotes samazināšanas efekts." data-ru="Минимальный эффективный размер — 10 авто. Чем больше парк, тем выше эффект масштаба. Клиенты Optimistic: Food Union, Tamro, Cēsu Alus — все 20+ авто." data-en="Minimum effective fleet size is 10 vehicles. The larger the fleet, the greater the scale effect. Optimistic clients: Food Union, Tamro, Cēsu Alus — all 20+ vehicles.">Minimālais efektīvais apjoms ir 10 auto. Jo lielāks parks, jo lielāks mēroga efekts. Optimistic klienti: Food Union, Tamro, Cēsu Alus — visi 20+ auto. Virs 50 auto tiek aktivizēts flotes samazināšanas efekts.</div>
+
+    <div class="srow">
+      <span class="slabel-wrap"><span class="slabel" data-lv="Piegādes punkti dienā (viss parks)" data-ru="Точек доставки в день (весь парк)" data-en="Delivery stops/day (total fleet)">Piegādes punkti dienā (viss parks)</span><button class="tip-btn" onclick="tog('t2')">i</button></span>
+      <input type="range" min="50" max="3000" value="300" step="10" id="stops">
+      <span class="sval" id="stops-out">300</span>
+    </div>
+    <div class="tipbox" id="t2" data-lv="ICP minimums: 50 punkti dienā visam parkam. Optimistic algoritms 4000 punktus optimizē 5–10 minūtēs. Jo vairāk punktu — jo lielāks ietaupījums no maršruta optimizācijas un LIFO iekraušanas." data-ru="Минимум ICP: 50 точек в день на весь парк. Алгоритм Optimistic оптимизирует 4000 точек за 5–10 минут. Чем больше точек — тем выше экономия." data-en="ICP minimum: 50 stops/day for the whole fleet. Optimistic algorithm optimises 4,000 stops in 5–10 minutes. More stops = greater savings.">ICP minimums: 50 punkti dienā visam parkam. Optimistic algoritms 4000 punktus optimizē 5–10 minūtēs. Jo vairāk punktu — jo lielāks ietaupījums no maršruta optimizācijas un LIFO iekraušanas.</div>
+
+    <div class="srow">
+      <span class="slabel-wrap"><span class="slabel" data-lv="Vidējais nobraukums dienā (km/auto)" data-ru="Средний пробег в день (км/авто)" data-en="Avg daily mileage (km/vehicle)">Vidējais nobraukums dienā (km/auto)</span><button class="tip-btn" onclick="tog('t3')">i</button></span>
+      <input type="range" min="50" max="400" value="120" step="5" id="km">
+      <span class="sval" id="km-out">120 km</span>
+    </div>
+    <div class="tipbox" id="t3" data-lv="Tipisks piegādes auto pilsētā: 80–150 km/dienā. Reģionālajai loģistikai — līdz 300 km. Lielāks nobraukums = lielāks ietaupījums uz katru %" data-ru="Типичный развозной автомобиль в городе: 80–150 км/день. Региональная логистика — до 300 км. Больше пробег = больше экономия на каждый %." data-en="Typical city delivery vehicle: 80–150 km/day. Regional logistics — up to 300 km. Higher mileage = greater savings per %.">Tipisks piegādes auto pilsētā: 80–150 km/dienā. Reģionālajai loģistikai — līdz 300 km. Lielāks nobraukums = lielāks ietaupījums uz katru %</div>
+
+    <div class="srow">
+      <span class="slabel-wrap"><span class="slabel" data-lv="Nobraukuma samazinājums (%)" data-ru="Сокращение пробега (%)" data-en="Mileage reduction (%)">Nobraukuma samazinājums (%)</span><button class="tip-btn" onclick="tog('t4')">i</button></span>
+      <input type="range" min="5" max="25" value="15" step="1" id="reduction">
+      <span class="sval" id="reduction-out">15%</span>
+    </div>
+    <div class="tipbox" id="t4" data-lv="Reālistisks mērķis pilsētas loģistikā: 10–15%. Balstīts uz Optimistic klientu datiem. Neoptimāls maršruts pie 20–30 punktiem rada vidēji 10–15% liekas km." data-ru="Реалистичная цель для городской логистики: 10–15%. На основе данных клиентов Optimistic. Неоптимальный маршрут при 20–30 точках даёт ~10–15% лишних км." data-en="Realistic target for city logistics: 10–15%. Based on Optimistic client data. A non-optimised route with 20–30 stops wastes ~10–15% in mileage.">Reālistisks mērķis pilsētas loģistikā: 10–15%. Balstīts uz Optimistic klientu datiem. Neoptimāls maršruts pie 20–30 punktiem rada vidēji 10–15% liekas km.</div>
+
+    <div class="srow">
+      <span class="slabel-wrap"><span class="slabel" data-lv="Šofera alga neto (€/mēn)" data-ru="Зарплата водителя нетто (€/мес)" data-en="Driver net salary (€/month)">Šofera alga neto (€/mēn)</span><button class="tip-btn" onclick="tog('t5')">i</button></span>
+      <input type="range" min="800" max="2500" value="1100" step="50" id="salary">
+      <span class="sval" id="salary-out">€1 100</span>
+    </div>
+    <div class="tipbox" id="t5" data-lv="Vidējā šofera alga Baltijā 2026. gadā. Darba devēja izmaksas ar VSAOI un IIN = 1.82× neto. Pie €1 100 neto → ~€2 000/mēn jeb €11.90/h." data-ru="Средняя зарплата водителя в Прибалтике 2026. Затраты работодателя с налогами = 1.82× нетто. При €1 100 нетто → ~€2 000/мес или €11.90/ч." data-en="Average driver salary in the Baltics 2026. Employer cost incl. taxes = 1.82× net. At €1,100 net → ~€2,000/month or €11.90/h.">Vidējā šofera alga Baltijā 2026. gadā. Darba devēja izmaksas ar VSAOI un IIN = 1.82× neto. Pie €1 100 neto → ~€2 000/mēn jeb €11.90/h.</div>
+
+    <div class="srow">
+      <span class="slabel-wrap"><span class="slabel" data-lv="Km izmaksas (€/km)" data-ru="Стоимость км (€/км)" data-en="Cost per km (€/km)">Km izmaksas (€/km)</span><button class="tip-btn" onclick="tog('t6')">i</button></span>
+      <input type="range" min="0.20" max="0.60" value="0.29" step="0.01" id="kmcost">
+      <span class="sval" id="kmcost-out">€0.29</span>
+    </div>
+    <div class="tipbox" id="t6" data-lv="Degviela €0.21/km (dīzelis €1.65/L, 13L/100km) + uzturēšana €0.08/km. Kopā: €0.29/km. Lieliem busiņiem vai vecākam parkam — augstāka vērtība." data-ru="Топливо €0.21/км (дизель €1.65/л, 13л/100км) + обслуживание €0.08/км. Итого: €0.29/км. Для крупных фургонов или старого парка — выше." data-en="Fuel €0.21/km (diesel €1.65/L, 13L/100km) + maintenance €0.08/km. Total: €0.29/km. Higher for large vans or older fleets.">Degviela €0.21/km (dīzelis €1.65/L, 13L/100km) + uzturēšana €0.08/km. Kopā: €0.29/km. Lieliem busiņiem vai vecākam parkam — augstāka vērtība.</div>
+
+    <div class="srow">
+      <span class="slabel-wrap"><span class="slabel" data-lv="Neveiksmīgas piegādes (mēnesī/auto)" data-ru="Неудачные доставки (в мес/авто)" data-en="Failed deliveries (per month/vehicle)">Neveiksmīgas piegādes (mēnesī/auto)</span><button class="tip-btn" onclick="tog('t7')">i</button></span>
+      <input type="range" min="0" max="20" value="3" step="1" id="failed">
+      <span class="sval" id="failed-out">3</span>
+    </div>
+    <div class="tipbox" id="t7" data-lv="Šoferis ierodas, bet klients nav — dubults nobraukums un darba laiks. Viena neveiksmīga piegāde = ~€20. Optimistic precīzi laika logi samazina šo par 60–80%." data-ru="Водитель приехал, клиента нет — двойной пробег и рабочее время. Одна неудачная доставка = ~€20. Точные временны́е окна Optimistic снижают это на 60–80%." data-en="Driver arrives but client is absent — double mileage and time. One failed delivery = ~€20. Optimistic precise time windows reduce this by 60–80%.">Šoferis ierodas, bet klients nav — dubults nobraukums un darba laiks. Viena neveiksmīga piegāde = ~€20. Optimistic precīzi laika logi samazina šo par 60–80%.</div>
+
+    <div class="srow">
+      <span class="slabel-wrap"><span class="slabel" data-lv="Time-window sodi (mēnesī, kopā)" data-ru="Штрафы за time-window (в мес, итого)" data-en="Time-window penalties (per month, total)">Time-window sodi (mēnesī, kopā)</span><button class="tip-btn" onclick="tog('t8')">i</button></span>
+      <input type="range" min="0" max="20" value="2" step="1" id="fines">
+      <span class="sval" id="fines-out">2</span>
+    </div>
+    <div class="tipbox" id="t8" data-lv="Piegādes Maxima, Rimi, farmācijai (Tamro, BENU) prasa precīzu laika logu. Kavējums = soda nauda €50–150 vai dīkstāve. Vidēji €80/gadījums." data-ru="Поставки в Maxima, Rimi, фармацевтику (Tamro, BENU) требуют точного временно́го окна. Опоздание = штраф €50–150 или простой. В среднем €80/случай." data-en="Deliveries to Maxima, Rimi, pharma (Tamro, BENU) require precise time windows. Late = penalty €50–150 or waiting time. Average €80/case.">Piegādes Maxima, Rimi, farmācijai (Tamro, BENU) prasa precīzu laika logu. Kavējums = soda nauda €50–150 vai dīkstāve. Vidēji €80/gadījums.</div>
+  </div>
+
+  <!-- TARIFF -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><span class="card-title-icon icon-amber">&#x1F4B0;</span> <span data-lv="OPTIMISTIC TARIFS" data-ru="ТАРИФ OPTIMISTIC" data-en="OPTIMISTIC PRICING">OPTIMISTIC TARIFS</span></div>
+      <div id="active-plan-name" style="font-size:13px;font-weight:600;color:var(--green)"></div>
+    </div>
+
+    <div class="tariff-grid" id="tariff-grid"></div>
+    <div class="tariff-grid2" id="tariff-grid2"></div>
+
+    <div class="manual-fields" id="manual-fields">
+      <div style="font-size:12px;font-weight:600;color:var(--gray-400);letter-spacing:.06em;margin-bottom:12px" data-lv="MANUĀLAIS IEVADS" data-ru="РУЧНОЙ ВВОД" data-en="MANUAL INPUT">MANUĀLAIS IEVADS</div>
+      <div class="srow">
+        <span class="slabel-wrap"><span class="slabel" data-lv="Ieviešana (€, min. 7 000)" data-ru="Внедрение (€, мин. 7 000)" data-en="Setup fee (€, min. 7,000)">Ieviešana (€, min. 7 000)</span></span>
+        <input type="range" min="7000" max="30000" value="9000" step="500" id="setup">
+        <span class="sval" id="setup-out">€9 000</span>
+      </div>
+      <div class="srow">
+        <span class="slabel-wrap"><span class="slabel" data-lv="Abonēšana (€/mēn, min. 640)" data-ru="Подписка (€/мес, мин. 640)" data-en="Monthly (€/month, min. 640)">Abonēšana (€/mēn, min. 640)</span></span>
+        <input type="range" min="640" max="3500" value="900" step="50" id="monthly">
+        <span class="sval" id="monthly-out">€900</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- BLOCK A -->
+  <div class="card">
+    <div class="block-a-header">
+      <div class="block-header-left">
+        <h3 data-lv="Bloks A — Operatīvā ekonomija" data-ru="Блок A — Операционная экономия" data-en="Block A — Operational savings">Bloks A — Operatīvā ekonomija</h3>
+        <p data-lv="Ikdienas ietaupījumi, ko redz loģistikas vadītājs" data-ru="Ежедневная экономия, которую видит руководитель логистики" data-en="Daily savings visible to the logistics manager">Ikdienas ietaupījumi, ko redz loģistikas vadītājs</p>
+      </div>
+      <span class="block-tag tag-green" data-lv="LOGISTAM" data-ru="ЛОГИСТУ" data-en="FOR LOGISTICIAN">LOGISTAM</span>
+    </div>
+    <div class="g4" id="blockA" style="margin-bottom:10px"></div>
+    <div class="tipbox open" id="tip-a"></div>
+  </div>
+
+  <!-- BLOCK B -->
+  <div class="card">
+    <div class="block-b-header">
+      <div class="block-header-left">
+        <h3 data-lv="Bloks B — Stratēģiskā ekonomija" data-ru="Блок B — Стратегическая экономия" data-en="Block B — Strategic savings">Bloks B — Stratēģiskā ekonomija</h3>
+        <p data-lv="Slēptie zaudējumi un flotes optimizācija — CFO līmeņa argumenti" data-ru="Скрытые потери и оптимизация флота — аргументы уровня CFO" data-en="Hidden losses and fleet optimisation — CFO-level arguments">Slēptie zaudējumi un flotes optimizācija — CFO līmeņa argumenti</p>
+      </div>
+      <span class="block-tag tag-blue" data-lv="CFO" data-ru="CFO" data-en="CFO">CFO</span>
+    </div>
+    <div class="g4" id="blockB" style="margin-bottom:12px"></div>
+    <div class="tipbox open" id="tip-b" style="margin-bottom:12px"></div>
+    <div class="srow">
+      <span class="slabel-wrap"><span class="slabel" data-lv="Atbrīvojamās mašīnas (efektivitātes efekts)" data-ru="Высвобождаемые машины (эффект эффективности)" data-en="Vehicles to release (efficiency effect)">Atbrīvojamās mašīnas (efektivitātes efekts)</span><button class="tip-btn" onclick="tog('t9')">i</button></span>
+      <input type="range" min="0" max="20" value="1" step="1" id="remove">
+      <span class="sval" id="remove-out">1</span>
+    </div>
+    <div class="tipbox" id="t9" data-lv="Pie 10–15% efektivitātes pieauguma lielāki parki var izpildīt to pašu darbu ar mazāku floti. Vienas mašīnas fiksētās izmaksas: līzings ~€750 + apdrošināšana ~€150 + šoferis ~€2 000 = €2 900/mēn." data-ru="При росте эффективности на 10–15% крупные парки могут выполнять тот же объём меньшим количеством машин. Фиксированные затраты на 1 авто: лизинг ~€750 + страховка ~€150 + водитель ~€2 000 = €2 900/мес." data-en="With a 10–15% efficiency gain, larger fleets can do the same work with fewer vehicles. Fixed cost per vehicle: leasing ~€750 + insurance ~€150 + driver ~€2,000 = €2,900/month.">Pie 10–15% efektivitātes pieauguma lielāki parki var izpildīt to pašu darbu ar mazāku floti. Vienas mašīnas fiksētās izmaksas: līzings ~€750 + apdrošināšana ~€150 + šoferis ~€2 000 = €2 900/mēn.</div>
+  </div>
+
+  <!-- SUMMARY -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><span class="card-title-icon icon-green">&#x1F4CA;</span> <span data-lv="KOPSAVILKUMS" data-ru="ИТОГИ" data-en="SUMMARY">KOPSAVILKUMS</span></div>
+    </div>
+    <div class="summary-hero" id="summary-hero"></div>
+
+    <div style="margin-bottom:.75rem">
+      <div class="legend">
+        <span><span class="ld" style="background:#2db87a"></span><span data-lv="Kumulatīvais ietaupījums" data-ru="Накопленная экономия" data-en="Cumulative savings">Kumulatīvais ietaupījums</span></span>
+        <span><span class="ld" style="background:#c0392b"></span><span data-lv="Optimistic izmaksas" data-ru="Затраты на Optimistic" data-en="Optimistic cost">Optimistic izmaksas</span></span>
+      </div>
+      <div class="chart-wrap"><canvas id="roiChart"></canvas></div>
+    </div>
+
+    <div class="punch" id="punch"></div>
+  </div>
+
+  <!-- TABLE -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><span class="card-title-icon icon-blue">&#x1F4C4;</span> <span data-lv="DETALIZĒTĀ TABULA" data-ru="ДЕТАЛЬНАЯ ТАБЛИЦА" data-en="DETAILED TABLE">DETALIZĒTĀ TABULA</span></div>
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr>
+            <th data-lv="Pozīcija" data-ru="Позиция" data-en="Item">Pozīcija</th>
+            <th data-lv="Mēnesī" data-ru="В месяц" data-en="Monthly">Mēnesī</th>
+            <th data-lv="1. gadā" data-ru="1-й год" data-en="Year 1">1. gadā</th>
+            <th data-lv="2. gadā+" data-ru="2-й год+" data-en="Year 2+">2. gadā+</th>
+          </tr>
+        </thead>
+        <tbody id="dtable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section-actions">
+    <button class="print-btn" onclick="window.print()">&#x1F5A8; <span data-lv="Drukāt / Saglabāt PDF" data-ru="Печать / Сохранить PDF" data-en="Print / Save as PDF">Drukāt / Saglabāt PDF</span></button>
+    <button class="cta-btn" onclick="document.getElementById('overlay').classList.add('open')" data-lv="Pieteikties konsultācijai →" data-ru="Записаться на консультацию →" data-en="Book a consultation →">Pieteikties konsultācijai →</button>
+  </div>
+
+  <div class="footer">
+    <div>optimistic.lv &nbsp;·&nbsp; SIA Futech, Dzelzavas iela 117, Rīga, LV-1021 &nbsp;·&nbsp; +371 22845568</div>
+    <div class="disclaimer">* <span data-lv="Visi aprēķini ir orientējoši un balstīti uz Baltijas tirgus vidējiem rādītājiem 2026. gadā. Faktiskais ietaupījums var atšķirties atkarībā no konkrētajiem uzņēmuma apstākļiem. SIA Futech negarantē konkrētu finanšu rezultātu sasniegšanu." data-ru="Все расчёты носят ориентировочный характер и основаны на средних показателях рынка Прибалтики 2026 года. Фактическая экономия может отличаться в зависимости от конкретных условий компании. SIA Futech не гарантирует достижения конкретных финансовых результатов." data-en="All calculations are indicative and based on average Baltic market figures for 2026. Actual savings may vary depending on specific business conditions. SIA Futech does not guarantee the achievement of specific financial results.">Visi aprēķini ir orientējoši un balstīti uz Baltijas tirgus vidējiem rādītājiem 2026. gadā. Faktiskais ietaupījums var atšķirties atkarībā no konkrētajiem uzņēmuma apstākļiem. SIA Futech negarantē konkrētu finanšu rezultātu sasniegšanu.</span></div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="overlay" id="overlay" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal">
+    <button class="modal-close" onclick="document.getElementById('overlay').classList.remove('open')">&#x2715;</button>
+    <div id="form-view">
+      <h2 data-lv="Sazinieties ar mums" data-ru="Свяжитесь с нами" data-en="Contact us">Sazinieties ar mums</h2>
+      <p class="sub" data-lv="Aizpildiet formu — mēs sazināsimies ar jums 24h laikā ar individuālu piedāvājumu" data-ru="Заполните форму — мы свяжемся с вами в течение 24ч с индивидуальным предложением" data-en="Fill in the form — we'll contact you within 24h with a personalised offer">Aizpildiet formu — mēs sazināsimies ar jums 24h laikā ar individuālu piedāvājumu</p>
+      <div class="modal-summary" id="modal-summary"></div>
+      <div class="form-group">
+        <label data-lv="VĀRDS UZVĀRDS" data-ru="ИМЯ ФАМИЛИЯ" data-en="FULL NAME">VĀRDS UZVĀRDS</label>
+        <input type="text" id="f-name" placeholder="Jānis Bērziņš">
+      </div>
+      <div class="form-group">
+        <label data-lv="UZŅĒMUMS" data-ru="КОМПАНИЯ" data-en="COMPANY">UZŅĒMUMS</label>
+        <input type="text" id="f-company" placeholder="SIA Piemērs">
+      </div>
+      <div class="form-group">
+        <label data-lv="KORPORATĪVAIS E-PASTS" data-ru="КОРПОРАТИВНЫЙ E-MAIL" data-en="CORPORATE EMAIL">KORPORATĪVAIS E-PASTS</label>
+        <input type="email" id="f-email" placeholder="jānis@uznemums.lv">
+      </div>
+      <div class="form-group">
+        <label data-lv="MOBĪLAIS TELEFONS" data-ru="МОБИЛЬНЫЙ ТЕЛЕФОН" data-en="MOBILE PHONE">MOBĪLAIS TELEFONS</label>
+        <input type="tel" id="f-phone" placeholder="+371 2000 0000">
+      </div>
+      <div class="modal-footer">
+        <button class="cta-btn" style="flex:1" onclick="submitForm()" data-lv="Nosūtīt pieteikumu" data-ru="Отправить заявку" data-en="Submit request">Nosūtīt pieteikumu</button>
+      </div>
+    </div>
+    <div class="success-msg" id="success-view">
+      <div class="success-icon">&#x2713;</div>
+      <h3 data-lv="Paldies! Saņēmām jūsu pieteikumu." data-ru="Спасибо! Мы получили вашу заявку." data-en="Thank you! We received your request.">Paldies! Saņēmām jūsu pieteikumu.</h3>
+      <p data-lv="Mēs sazināsimies ar jums tuvāko 24 stundu laikā." data-ru="Мы свяжемся с вами в течение ближайших 24 часов." data-en="We will contact you within the next 24 hours.">Mēs sazināsimies ar jums tuvāko 24 stundu laikā.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+var LANG='lv';
+var tariff={setup:7000,monthly:650};
+var tariffMode='auto';
+var chart=null;
+var calcState={};
+
+var PLANS=[
+  {id:'starter', name:{lv:'Starter',ru:'Starter',en:'Starter'}, setup:7000, monthly:650, cars:'10', stops:'5 000', carsMin:10, carsMax:10, stopsMax:5000},
+  {id:'average', name:{lv:'Average',ru:'Average',en:'Average'}, setup:9000, monthly:850, cars:'11–20', stops:'9 000', carsMin:11, carsMax:20, stopsMax:9000},
+  {id:'growth',  name:{lv:'Growth',ru:'Growth',en:'Growth'},  setup:11000,monthly:1050,cars:'21–30', stops:'15 000',carsMin:21, carsMax:30, stopsMax:15000},
+  {id:'entlite', name:{lv:'Enterprise LITE',ru:'Enterprise LITE',en:'Enterprise LITE'}, setup:15000,monthly:1350,cars:'31–50', stops:'35 000',carsMin:31, carsMax:50, stopsMax:35000},
+  {id:'ent',     name:{lv:'Enterprise',ru:'Enterprise',en:'Enterprise'}, setup:20000,monthly:1750,cars:'51–70', stops:'60 000',carsMin:51, carsMax:70, stopsMax:60000},
+  {id:'entpro',  name:{lv:'Enterprise PRO',ru:'Enterprise PRO',en:'Enterprise PRO'}, setup:25000,monthly:2250,cars:'71–100',stops:'120 000',carsMin:71, carsMax:100, stopsMax:120000},
+];
+
+function buildTariffGrid(){
+  var g1=document.getElementById('tariff-grid');
+  var g2=document.getElementById('tariff-grid2');
+  var first3=PLANS.slice(0,3).map(planCard).join('');
+  var last3=PLANS.slice(3).map(planCard).join('');
+  var manualHtml='<div class="tariff-card" id="tc-manual" onclick="selectTariff(\'manual\')">'
+    +'<div class="tariff-active-badge">&#x2713;</div>'
+    +'<div class="tc-name">Manual</div>'
+    +'<div class="tc-setup" data-lv="Manuāli" data-ru="Вручную" data-en="Custom">Manuāli</div>'
+    +'<div class="tc-range" data-lv="min. €7 000 + €640/mēn" data-ru="мин. €7 000 + €640/мес" data-en="min. €7,000 + €640/mo">min. €7 000 + €640/mēn</div>'
+    +'</div>';
+  g1.innerHTML=first3;
+  g2.innerHTML=last3+manualHtml;
+  highlightTariff();
+}
+
+function planCard(p){
+  return '<div class="tariff-card" id="tc-'+p.id+'" onclick="selectTariff(\''+p.id+'\')"><div class="tariff-active-badge">&#x2713;</div>'
+    +'<div class="tc-name">'+p.name[LANG]+'</div>'
+    +'<div class="tc-setup">€'+p.setup.toLocaleString('de-DE')+'</div>'
+    +'<div class="tc-monthly">€'+p.monthly+'/mēn</div>'
+    +'<div class="tc-range">'+p.cars+' auto · '+p.stops+' pts</div>'
+    +'</div>';
+}
+
+function selectTariff(id){
+  tariffMode=id;
+  if(id==='manual'){
+    document.getElementById('manual-fields').style.display='block';
+    tariff.setup=+document.getElementById('setup').value;
+    tariff.monthly=+document.getElementById('monthly').value;
+  } else {
+    document.getElementById('manual-fields').style.display='none';
+    var p=PLANS.find(function(x){return x.id===id;});
+    if(p){tariff={setup:p.setup,monthly:p.monthly};}
+  }
+  highlightTariff();
+  calc();
+}
+
+function autoSelectTariff(){
+  var cars=+document.getElementById('cars').value;
+  var stops=+document.getElementById('stops').value;
+  if(tariffMode!=='auto' && tariffMode!=='manual'){
+    var p=PLANS.find(function(x){return x.id===tariffMode;});
+    if(p && cars>=p.carsMin && cars<=p.carsMax) return;
+  }
+  if(tariffMode==='manual') return;
+  var match=null;
+  for(var i=0;i<PLANS.length;i++){
+    if(cars>=PLANS[i].carsMin && cars<=PLANS[i].carsMax){match=PLANS[i];break;}
+  }
+  if(!match) match=PLANS[PLANS.length-1];
+  if(match){
+    tariffMode=match.id;
+    tariff={setup:match.setup,monthly:match.monthly};
+    highlightTariff();
+    document.getElementById('active-plan-name').textContent=match.name[LANG];
+  }
+}
+
+function highlightTariff(){
+  PLANS.forEach(function(p){
+    var el=document.getElementById('tc-'+p.id);
+    if(el) el.classList.toggle('active',tariffMode===p.id);
+  });
+  var mel=document.getElementById('tc-manual');
+  if(mel) mel.classList.toggle('active',tariffMode==='manual');
+}
+
+function tog(id){var el=document.getElementById(id);if(el)el.classList.toggle('open');}
+
+function fmt(n){return '\u20ac'+Math.round(Math.abs(n)).toLocaleString('de-DE');}
+function fmtKm(n){return Math.round(n).toLocaleString('de-DE')+' km';}
+
+function mc(label,val,sub,cls){
+  return '<div class="mc '+(cls||'')+'"><div class="mc-label">'+label+'</div><div class="mc-val">'+val+'</div><div class="mc-sub">'+(sub||'')+'</div></div>';
+}
+function sh(label,val,sub,cls){
+  return '<div class="sh-item"><div class="sh-label">'+label+'</div><div class="sh-val '+(cls||'')+'">'+val+'</div><div class="sh-sub">'+(sub||'')+'</div></div>';
+}
+
+var T={
+  lv:{savYear:'Ietaupījums gadā',netY1:'Tīrais ieguvums 1. gadā',netY2:'Tīrais ieguvums 2.+ gadā',payback:'Atmaksāšanās',
+      allBlocks:'A + B bloki kopā',afterCosts:'pēc visām izmaksām',noSetup:'bez ieviešanas maksas',fullInv:'pilna investīcija',
+      kmSav:'Km ietaupījums/dienā',fuelSav:'Degviela + amort.',timeEff:'Šofera laiks',lifoLoad:'LIFO iekraušana',
+      failedDel:'Neveiksmīgas piegādes',twFines:'Time-window sodi',fleetOpt:'Flotes optimizācija',adminSav:'Adm. atslodze',
+      perDay:'/dienā',perMon:'/mēn',on1auto:'uz 1 auto',pts:'punkti',notActive:'nav aktīvs',
+      howCalc:'Kā aprēķinām',invest1y:'Investīcija 1. gadā',
+      punchTpl:'Investējot {m}/mēnesī, Jūsu {c} auto parks ietaupa {y} gadā — no kuriem {op} ir operatīvie ietaupījumi un {hid} ir slēptie zaudējumi. Atmaksāšanās — {pb}.',
+      totalNet:'KOPĀ tīrais ieguvums',setupCost:'Optimistic izmaksas',fuelRow:'Degviela + amortizācija',timeRow:'Šofera darba laiks',
+      lifoRow:'LIFO iekraušana',failRow:'Neveiksmīgas piegādes',fineRow:'Time-window sodi',fleetRow:'Flotes optimizācija',adminRow:'Administrācijas atslodze',
+      months:['Mēn 1','Mēn 2','Mēn 3','Mēn 6','Mēn 9','Mēn 12','Mēn 18','Mēn 24','Mēn 36'],
+      pbMon:'mēnešos',pbFirst:'pirmajā mēnesī',
+      modalSum:'Jūsu autoparka parametri',auto:'auto',
+  },
+  ru:{savYear:'Экономия в год',netY1:'Чистая выгода 1-й год',netY2:'Чистая выгода 2-й год+',payback:'Окупаемость',
+      allBlocks:'Блоки A + B вместе',afterCosts:'после всех затрат',noSetup:'без платы за внедрение',fullInv:'полная инвестиция',
+      kmSav:'Экономия км/день',fuelSav:'Топливо + амортизация',timeEff:'Время водителя',lifoLoad:'LIFO загрузка',
+      failedDel:'Неудачные доставки',twFines:'Штрафы time-window',fleetOpt:'Оптимизация флота',adminSav:'Разгрузка адм.',
+      perDay:'/день',perMon:'/мес',on1auto:'на 1 авто',pts:'точки',notActive:'не активно',
+      howCalc:'Как считаем',invest1y:'Инвестиция 1-й год',
+      punchTpl:'Инвестируя {m}/месяц, Ваш парк из {c} авто экономит {y} в год — из них {op} операционная экономия и {hid} скрытые потери. Окупаемость — {pb}.',
+      totalNet:'ИТОГО чистая выгода',setupCost:'Затраты Optimistic',fuelRow:'Топливо + амортизация',timeRow:'Рабочее время водителей',
+      lifoRow:'LIFO загрузка',failRow:'Неудачные доставки',fineRow:'Штрафы time-window',fleetRow:'Оптимизация флота',adminRow:'Разгрузка администрации',
+      months:['Мес 1','Мес 2','Мес 3','Мес 6','Мес 9','Мес 12','Мес 18','Мес 24','Мес 36'],
+      pbMon:'месяцев',pbFirst:'в первый месяц',
+      modalSum:'Параметры вашего автопарка',auto:'авто',
+  },
+  en:{savYear:'Savings per year',netY1:'Net gain year 1',netY2:'Net gain year 2+',payback:'Payback',
+      allBlocks:'Blocks A + B combined',afterCosts:'after all costs',noSetup:'excl. setup fee',fullInv:'full investment',
+      kmSav:'Km saved/day',fuelSav:'Fuel + depreciation',timeEff:'Driver time',lifoLoad:'LIFO loading',
+      failedDel:'Failed deliveries',twFines:'Time-window fines',fleetOpt:'Fleet optimisation',adminSav:'Admin relief',
+      perDay:'/day',perMon:'/mo',on1auto:'per vehicle',pts:'stops',notActive:'n/a',
+      howCalc:'How we calculate',invest1y:'Investment year 1',
+      punchTpl:'Investing {m}/month, your {c}-vehicle fleet saves {y}/year — of which {op} is operational savings and {hid} are hidden losses recovered. Payback — {pb}.',
+      totalNet:'TOTAL net gain',setupCost:'Optimistic cost',fuelRow:'Fuel + depreciation',timeRow:'Driver working time',
+      lifoRow:'LIFO loading',failRow:'Failed deliveries',fineRow:'Time-window fines',fleetRow:'Fleet optimisation',adminRow:'Admin relief',
+      months:['Mo 1','Mo 2','Mo 3','Mo 6','Mo 9','Mo 12','Mo 18','Mo 24','Mo 36'],
+      pbMon:'months',pbFirst:'first month',
+      modalSum:'Your fleet parameters',auto:'vehicles',
+  }
+};
+
+function t(k){return T[LANG][k]||k;}
+
+function setLang(l){
+  LANG=l;
+  document.querySelectorAll('.lang-btn').forEach(function(b){b.classList.toggle('active',b.textContent===l.toUpperCase());});
+  document.querySelectorAll('[data-'+l+']').forEach(function(el){el.textContent=el.getAttribute('data-'+l);});
+  buildTariffGrid();
+  calc();
+}
+
+function calc(){
+  autoSelectTariff();
+  var cars=+document.getElementById('cars').value;
+  var stops=+document.getElementById('stops').value;
+  var km=+document.getElementById('km').value;
+  var red=+document.getElementById('reduction').value/100;
+  var salary=+document.getElementById('salary').value;
+  var kmcost=+document.getElementById('kmcost').value;
+  var failed=+document.getElementById('failed').value;
+  var fines=+document.getElementById('fines').value;
+  var remove=+document.getElementById('remove').value;
+  if(tariffMode==='manual'){
+    tariff.setup=+document.getElementById('setup').value;
+    tariff.monthly=Math.max(640,+document.getElementById('monthly').value);
+  }
+
+  var WD=252, HR=salary*1.82/168;
+  var savedKmDay=km*red;
+  var fuelDay=savedKmDay*kmcost;
+  var timeDay=0.5*HR;
+  var stopsPerCar=stops/cars;
+  var lifoDay=stopsPerCar>15?(stopsPerCar*5/60)*HR*0.4:0;
+  var opDay=fuelDay+timeDay+lifoDay;
+  var opMonth=opDay*WD/12*cars;
+  var opYear=opDay*WD*cars;
+
+  var failedMonth=failed*20*cars;
+  var finesMonth=fines*80;
+  var hiddenMonth=failedMonth+finesMonth;
+  var hiddenYear=hiddenMonth*12;
+
+  var fleetMonth=remove*2900;
+  var adminMonth=cars>=20?Math.min(Math.floor(cars/20)*1500,5000):0;
+  var stratMonth=fleetMonth+adminMonth;
+  var stratYear=stratMonth*12;
+
+  var totalMonth=opMonth+hiddenMonth+stratMonth;
+  var totalYear=opYear+hiddenYear+stratYear;
+  var invest1=tariff.setup+tariff.monthly*12;
+  var invest2=tariff.monthly*12;
+  var net1=totalYear-invest1;
+  var net2=totalYear-invest2;
+  var payback=totalMonth>0?invest1/totalMonth:99;
+
+  calcState={cars:cars,stops:stops,totalYear:totalYear,opYear:opYear,hiddenYear:hiddenYear,stratYear:stratYear,net1:net1,net2:net2,payback:payback,tariff:tariff,totalMonth:totalMonth};
+
+  document.getElementById('blockA').innerHTML=
+    mc(t('kmSav'),fmtKm(savedKmDay),'nobraukums / день','amber')+
+    mc(t('fuelSav'),fmt(fuelDay)+t('perDay'),t('on1auto'),'green')+
+    mc(t('timeEff'),fmt(timeDay)+t('perDay'),'30 min × €'+HR.toFixed(2)+'/h','green')+
+    mc(t('lifoLoad'),stopsPerCar>15?fmt(lifoDay)+t('perDay'):t('notActive'),stopsPerCar>15?Math.round(stopsPerCar)+' '+t('pts'):'< 15 pts','green');
+
+  document.getElementById('tip-a').innerHTML=
+    '<strong>'+t('howCalc')+':</strong> '+Math.round(savedKmDay)+' km/'+t('perDay').replace('/','')
+    +' × €'+kmcost+' = '+fmt(fuelDay)+'. '
+    +'30 min × €'+HR.toFixed(2)+'/h = '+fmt(timeDay)+t('perDay')+'. '
+    +(stopsPerCar>15?'LIFO: '+Math.round(stopsPerCar)+' pts × 5min × 40% = '+fmt(lifoDay)+t('perDay')+'. ':'')
+    +t('allBlocks').split(' ')[0]+' '+t('perMon')+': '+fmt(opMonth)+'.';
+
+  document.getElementById('blockB').innerHTML=
+    mc(t('failedDel'),fmt(failedMonth)+t('perMon'),failed+' × €20 × '+cars+' '+t('auto'),'red')+
+    mc(t('twFines'),fmt(finesMonth)+t('perMon'),fines+' × €80','red')+
+    mc(t('fleetOpt'),remove>0?fmt(fleetMonth)+t('perMon'):t('notActive'),remove>0?remove+' × €2 900':'—','green')+
+    mc(t('adminSav'),adminMonth>0?fmt(adminMonth)+t('perMon'):t('notActive'),adminMonth>0?Math.floor(cars/20)+' spec.':'—','green');
+
+  document.getElementById('tip-b').innerHTML=
+    '<strong>'+t('howCalc')+':</strong> '
+    +t('failedDel')+': '+failed+' × €20 × '+cars+' = '+fmt(failedMonth)+t('perMon')+'. '
+    +t('twFines')+': '+fines+' × €80 = '+fmt(finesMonth)+t('perMon')+'. '
+    +t('fleetOpt')+': '+remove+' × €2 900 = '+fmt(fleetMonth)+t('perMon')+'. '
+    +(adminMonth>0?t('adminSav')+': €'+adminMonth+t('perMon')+'.':'');
+
+  document.getElementById('summary-hero').innerHTML=
+    sh(t('savYear'),fmt(totalYear),t('allBlocks'),'gold')+
+    sh(t('netY1'),fmt(net1),t('afterCosts'),net1>=0?'green':'')+ 
+    sh(t('netY2'),fmt(net2),t('noSetup'),'green')+
+    sh(t('payback'),payback<1?'< 1 mēn.':Math.round(payback)+' '+t('pbMon'),t('fullInv'),payback<=6?'green':payback<=12?'':'');
+
+  var pb=payback<1?t('pbFirst'):Math.round(payback)+' '+t('pbMon');
+  document.getElementById('punch').innerHTML='<p>'+t('punchTpl')
+    .replace('{m}',fmt(tariff.monthly))
+    .replace('{c}',cars)
+    .replace('{y}','<strong>'+fmt(totalYear)+'</strong>')
+    .replace('{op}','<strong>'+fmt(opYear)+'</strong>')
+    .replace('{hid}','<strong>'+fmt(hiddenYear+stratYear)+'</strong>')
+    .replace('{pb}','<strong>'+pb+'</strong>')+'</p>';
+
+  var setupM=tariff.setup/12;
+  var rows=[
+    [t('setupCost'),-(tariff.monthly+setupM),-invest1,-invest2,'minus'],
+    [t('fuelRow'),opMonth*0.52,opYear*0.52,opYear*0.52,'plus'],
+    [t('timeRow'),opMonth*0.48,opYear*0.48,opYear*0.48,'plus'],
+    [t('lifoRow'),lifoDay*WD/12*cars,lifoDay*WD*cars,lifoDay*WD*cars,'plus'],
+    [t('failRow'),failedMonth,failedMonth*12,failedMonth*12,'plus'],
+    [t('fineRow'),finesMonth,finesMonth*12,finesMonth*12,'plus'],
+    [t('fleetRow'),fleetMonth,fleetMonth*12,fleetMonth*12,'plus'],
+    [t('adminRow'),adminMonth,adminMonth*12,adminMonth*12,'plus'],
+    [t('totalNet'),totalMonth-tariff.monthly-setupM,net1,net2,net1>=0?'plus':'minus'],
+  ];
+  document.getElementById('dtable').innerHTML=rows.map(function(r){
+    var l=r[0],m=r[1],y1=r[2],y2=r[3],c=r[4];
+    var s=c==='minus'?'-':'+';
+    return '<tr class="'+(l===t('totalNet')?'total':'')+'"><td>'+l+'</td>'
+      +'<td class="'+c+'">'+s+fmt(m)+'</td>'
+      +'<td class="'+c+'">'+s+fmt(y1)+'</td>'
+      +'<td class="'+c+'">'+s+fmt(y2)+'</td></tr>';
+  }).join('');
+
+  var months=[1,2,3,6,9,12,18,24,36];
+  var savings=months.map(function(m){return Math.round(totalMonth*m);});
+  var costs=months.map(function(m){return Math.round(tariff.setup+tariff.monthly*m);});
+  if(chart){chart.destroy();}
+  chart=new Chart(document.getElementById('roiChart'),{
+    type:'bar',
+    data:{
+      labels:T[LANG].months,
+      datasets:[
+        {label:t('savYear'),data:savings,backgroundColor:'#2db87a',borderRadius:4},
+        {label:t('setupCost'),data:costs,backgroundColor:'#c0392b',borderRadius:4}
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return '\u20ac'+ctx.raw.toLocaleString('de-DE');}}}},
+      scales:{
+        x:{ticks:{font:{size:11},autoSkip:false,maxRotation:0},grid:{display:false}},
+        y:{ticks:{callback:function(v){return '\u20ac'+Math.round(v/1000)+'k';},font:{size:11}},grid:{color:'rgba(0,0,0,0.04)'}}
+      }
+    }
+  });
+
+  var ms=document.getElementById('modal-summary');
+  if(ms){
+    ms.innerHTML='<strong>'+t('modalSum')+':</strong> '+cars+' '+t('auto')+', '
+      +stops+' '+t('pts')+'/'+t('perDay').replace('/','')
+      +' · '+t('savYear')+': <strong>'+fmt(totalYear)+'</strong> · '+t('payback')+': '+(payback<1?t('pbFirst'):Math.round(payback)+' '+t('pbMon'));
+  }
+}
+
+['cars','stops','km','reduction','salary','kmcost','failed','fines','remove','setup','monthly'].forEach(function(id){
+  var el=document.getElementById(id);if(!el)return;
+  el.addEventListener('input',function(){
+    var v=+el.value;
+    var map={cars:v,stops:v,km:v+' km',reduction:v+'%',salary:'\u20ac'+v.toLocaleString('de-DE'),kmcost:'\u20ac'+v.toFixed(2),failed:v,fines:v,remove:v,setup:'\u20ac'+v.toLocaleString('de-DE'),monthly:'\u20ac'+v.toLocaleString('de-DE')};
+    var out=document.getElementById(id+'-out');if(out)out.textContent=map[id];
+    calc();
+  });
+});
+
+function submitForm(){
+  var name=document.getElementById('f-name').value.trim();
+  var company=document.getElementById('f-company').value.trim();
+  var email=document.getElementById('f-email').value.trim();
+  var phone=document.getElementById('f-phone').value.trim();
+  if(!name||!company||!email||!phone){alert('Lūdzu aizpildiet visus laukus.');return;}
+  var s=calcState;
+  var subject=encodeURIComponent('ROI Kalkulators — jauns pieteikums: '+company);
+  var body=encodeURIComponent(
+    'Jauns pieteikums no ROI Kalkulators\n\n'
+    +'Vārds: '+name+'\n'
+    +'Uzņēmums: '+company+'\n'
+    +'E-pasts: '+email+'\n'
+    +'Tālrunis: '+phone+'\n\n'
+    +'--- Autoparka parametri ---\n'
+    +'Automašīnas: '+s.cars+'\n'
+    +'Piegādes punkti: '+s.stops+'/dienā\n'
+    +'Aprēķinātais ietaupījums: €'+Math.round(s.totalYear).toLocaleString('de-DE')+'/gadā\n'
+    +'Tīrais ieguvums 1. gadā: €'+Math.round(s.net1).toLocaleString('de-DE')+'\n'
+    +'Atmaksāšanās: '+(s.payback<1?'< 1 mēn.':Math.round(s.payback)+' mēn.')+'\n'
+    +'Tarifs: Setup €'+s.tariff.setup+' + €'+s.tariff.monthly+'/mēn\n'
+  );
+  window.location.href='mailto:vg@optimistic.lv?subject='+subject+'&body='+body;
+  document.getElementById('form-view').style.display='none';
+  document.getElementById('success-view').style.display='block';
+}
+
+buildTariffGrid();
+calc();
+</script>
+</body>
+</html>
